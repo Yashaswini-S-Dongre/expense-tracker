@@ -40,6 +40,7 @@ If you want to run or modify this project on your local machine, follow these st
 ```bash
 git clone [https://https://github.com/Yashaswini-S-Dongre/expense-tracker]
 cd expense-tracker
+```
 
 ### 2. Configure Firebase (Optional but recommended for Cloud Sync)
 To enable cloud syncing, you need to add your own Firebase credentials.
@@ -58,6 +59,7 @@ const firebaseConfig = {
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
+```
 
 ### 3. Launch the App
 Since this is a static web application, no build steps or Node modules are required. Simply open the `index.html` file in any modern web browser. 
