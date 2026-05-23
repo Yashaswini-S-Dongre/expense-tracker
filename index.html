@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker Pro Max</title>
+    
+    <!-- Fonts & External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <!-- PWA Manifest & Styles -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="header">
+            <h2>Tracker Pro</h2>
+            <div class="header-actions">
+                <button class="theme-toggle" id="theme-toggle">🌙</button>
+                <button class="settings-toggle" onclick="openModal('settings-modal')">⚙️</button>
+            </div>
+        </div>
+        
+        <div class="budget-section">
+            <h3>Monthly Budget</h3>
+            <div class="budget-input-wrapper">
+                <span>₹</span><input type="number" id="budget-input" min="1" step="100">
+            </div>
+            <div class="circular-progress">
+                <svg viewBox="0 0 160 160">
+                    <circle class="bg" cx="80" cy="80" r="72"></circle>
+                    <circle class="fg" id="budget-ring-fg" cx="80" cy="80" r="72"></circle>
+                </svg>
+                <div class="ring-text">
+                    <span id="budget-percent">0%</span>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">Used</p>
+                </div>
+            </div>
+            <p class="budget-status">₹<span id="budget-remaining">0</span> remaining</p>
+            <button class="btn outline small" style="margin-top:12px" onclick="openModal('cat-budget-modal')">Set Category Caps</button>
+        </div>
+
+        <div>
+            <h3>Split / Owed</h3>
+            <div class="stat-card" style="margin-top: 10px; text-align: center; background: var(--bg);">
+                <p>People owe you</p>
+                <h2 id="owed-total" style="color: var(--success);">₹0</h2>
+            </div>
+        </div>
+
+        <div style="flex:1;"></div>
+        <button class="btn outline" style="margin-bottom:8px" onclick="openModal('cloud-sync-modal')" id="sync-btn-text">☁️ Cloud Sync</button>
+    </aside>
+
+    <!-- MAIN PANEL -->
+    <main class="center-panel">
+        <div class="hero-stats">
+            <div class="stat-card main">
+                <h3 id="month-label">This Month (INR)</h3>
+                <h1 id="hero-total">₹0</h1>
+            </div>
+            <div class="stat-row">
+                <div class="stat-card"><p>Transactions</p><h4 id="hero-count">0</h4></div>
+                <div class="stat-card"><p>Daily Avg</p><h4 id="hero-avg">₹0</h4></div>
+                <div class="stat-card"><p>Top Category</p><h4 id="hero-top-cat">-</h4></div>
+            </div>
+        </div>
+
+        <div class="add-form-container">
+            <h3 style="margin-bottom: 16px;">Add Expense</h3>
+            
+            <!-- AI Auto Fill -->
+            <div class="ai-input-group">
+                <input type="text" id="ai-text" placeholder="✨ Paste bank SMS to auto-fill..." style="background: var(--surface);">
+                <button class="btn small" onclick="processAIText()">Auto-Fill</button>
+            </div>
+
+            <form id="add-form">
+                <div class="form-row">
+                    <div class="input-group" style="flex: 2;">
+                        <input type="text" id="add-title" placeholder="What did you buy?" required>
+                    </div>
+                    <div class="input-group" style="flex: 1; display:flex; gap:4px;">
+                        <select id="add-currency" style="width: 70px; padding: 10px 4px;">
+                            <option value="INR">₹</option>
+                            <option value="USD">$</option>
+                            <option value="EUR">€</option>
+                            <option value="GBP">£</option>
+                        </select>
+                        <input type="number" id="add-amount" placeholder="Amount" min="0.01" step="0.01" required style="flex:1;">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="input-group" style="display:flex; gap:4px;">
+                        <select id="add-category" required style="flex:1;"></select>
+                        <button type="button" class="btn outline small" style="padding:0 12px" onclick="openModal('add-cat-modal')">+</button>
+                    </div>
+                    <div class="input-group">
+                        <input type="date" id="add-date" required>
+                    </div>
+                    <div class="input-group" style="display:flex; align-items:center; gap:8px;">
+                        <label style="font-size: 0.85rem; cursor:pointer;"><input type="checkbox" id="add-recurring"> Monthly</label>
+                        <label style="font-size: 0.85rem; cursor:pointer;"><input type="checkbox" id="add-split" onchange="document.getElementById('split-fields').style.display = this.checked ? 'flex' : 'none'"> Split</label>
+                    </div>
+                </div>
+                
+                <!-- Hidden Split Fields -->
+                <div class="form-row" id="split-fields" style="display:none; background: var(--bg); padding:10px; border-radius:8px;">
+                    <input type="text" id="split-who" placeholder="Who owes you?" style="flex:1;">
+                    <input type="number" id="split-amount" placeholder="Amount they owe" style="flex:1;" step="0.01">
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <input type="text" id="add-note" placeholder="Note (optional)">
+                    </div>
+                    <div class="input-group" style="flex: 0.5;">
+                        <input type="file" id="add-receipt" accept="image/*" style="font-size:0.8rem; padding: 8px;">
+                    </div>
+                    <button type="submit" class="btn" style="flex: 1;">Add</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="filters">
+            <input type="text" id="search-input" placeholder="Search..." style="max-width: 200px;">
+            <select id="date-filter" style="max-width: 150px;">
+                <option value="month" selected>This Month</option>
+                <option value="all">All Time</option>
+            </select>
+            <div id="category-filters" style="display:flex; gap:8px; overflow-x:auto;"></div>
+        </div>
+
+        <div class="expense-list-header" style="display:flex; justify-content:space-between;">
+            <h3>Recent Expenses</h3>
+        </div>
+        <div class="expense-list" id="expense-list"></div>
+    </main>
+
+    <!-- RIGHT PANEL -->
+    <aside class="right-panel">
+        <h3>Analytics</h3>
+        <p style="font-size:0.8rem; margin-top:-15px;">Monthly Distribution</p>
+        <div class="chart-container"><canvas id="donut-chart"></canvas></div>
+        
+        <p style="font-size:0.8rem; margin-top:10px;">6-Month Trend</p>
+        <div class="chart-container"><canvas id="trend-chart"></canvas></div>
+
+        <div style="margin-top: 10px; display:flex; justify-content:space-between; align-items:center;">
+            <h3>Savings Goals</h3>
+            <button class="btn outline small" onclick="openModal('add-goal-modal')">+</button>
+        </div>
+        <ul class="goals-list" id="goals-list"></ul>
+    </aside>
+</div>
+
+<!-- MODALS -->
+<!-- Custom Category Modal -->
+<div class="modal-overlay" id="add-cat-modal">
+    <div class="modal">
+        <h3>Add Category</h3>
+        <input type="text" id="new-cat-name" placeholder="Category Name (e.g. Pets)" style="margin-bottom:12px;">
+        <input type="text" id="new-cat-icon" placeholder="Emoji Icon (e.g. 🐶)" maxlength="2" style="margin-bottom:12px;">
+        <input type="color" id="new-cat-color" value="#0984E3" style="height:40px; padding:2px;">
+        <div class="modal-actions">
+            <button class="btn outline" onclick="closeModal('add-cat-modal')">Cancel</button>
+            <button class="btn" onclick="saveCustomCategory()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Category Budget Caps Modal -->
+<div class="modal-overlay" id="cat-budget-modal">
+    <div class="modal" style="max-width:500px;">
+        <h3>Category Budget Caps</h3>
+        <p style="margin-bottom:12px;">Set limits to get warnings before overspending.</p>
+        <div id="cat-budget-list" style="max-height: 300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeModal('cat-budget-modal')">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- Savings Goal Modal -->
+<div class="modal-overlay" id="add-goal-modal">
+    <div class="modal">
+        <h3>Add Savings Goal</h3>
+        <input type="text" id="goal-name" placeholder="E.g. Europe Trip" style="margin-bottom:12px;">
+        <input type="number" id="goal-target" placeholder="Target Amount (₹)" style="margin-bottom:12px;">
+        <input type="number" id="goal-current" placeholder="Already Saved (₹)" value="0">
+        <div class="modal-actions">
+            <button class="btn outline" onclick="closeModal('cloud-sync-modal')">Cancel</button>
+            <button class="btn outline" onclick="cloudLogout()" id="logout-btn" style="display:none; border-color:var(--danger); color:var(--danger)">Logout</button>
+            <button class="btn" onclick="cloudLogin()" id="login-btn">Login & Sync</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal (CSV & Auth mock) -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+        <h3>Settings</h3>
+        <div style="background:var(--bg); padding:16px; border-radius:8px; margin-bottom:16px;">
+            <h4>Bulk Import (CSV)</h4>
+            <p style="font-size:0.8rem; margin-bottom:8px;">Format: Date,Title,Category,Amount</p>
+            <textarea id="csv-input" rows="4" placeholder="2023-10-01,Netflix,Entertainment,649" style="margin-bottom:8px;"></textarea>
+            <button class="btn small" onclick="importCSV()">Import Rows</button>
+        </div>
+        <div class="modal-actions">
+            <button class="btn outline" onclick="closeModal('settings-modal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cloud Sync Modal -->
+<div class="modal-overlay" id="cloud-sync-modal">
+    <div class="modal">
+        <h3>Cloud Sync</h3>
+        <p style="font-size:0.85rem; margin-bottom:16px;">Connect to Firebase/Supabase to sync across devices.</p>
+        <input type="email" id="sync-email" placeholder="Email Address" style="margin-bottom:12px;">
+        <input type="password" id="sync-pass" placeholder="Password">
+        <div class="modal-actions">
+            <button class="btn outline" onclick="closeModal('cloud-sync-modal')">Cancel</button>
+            <button class="btn" onclick="mockCloudLogin()">Login & Sync</button>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Viewer Modal -->
+<div class="modal-overlay" id="receipt-modal" onclick="closeModal('receipt-modal')">
+    <div class="modal" style="background:transparent; box-shadow:none; text-align:center;">
+        <img id="receipt-large" src="" style="max-width:100%; max-height:80vh; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- App Logic -->
+<script src="script.js" defer></script>
+</body>
+</html>
