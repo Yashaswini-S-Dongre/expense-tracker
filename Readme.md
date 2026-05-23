@@ -38,7 +38,7 @@ If you want to run or modify this project on your local machine, follow these st
 
 ### 1. Clone the repository
 ```bash
-git clone [https://https://github.com/Yashaswini-S-Dongre/expense-tracker]
+git clone https://https://github.com/Yashaswini-S-Dongre/expense-tracker
 cd expense-tracker
 ```
 
