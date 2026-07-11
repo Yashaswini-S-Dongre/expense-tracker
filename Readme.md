@@ -1,4 +1,4 @@
-# 📊 Expense Tracker Pro Max
+# 📊 Expense Tracker
 
 A powerful, privacy-first, and feature-rich Progressive Web App (PWA) to track your daily expenses, manage budgets, and achieve your savings goals. 
 
